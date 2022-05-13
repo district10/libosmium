@@ -67,7 +67,11 @@ namespace osmium {
 
     /// Maximum of 256 characters of max 4 bytes each (in UTF-8 encoding)
     enum {
-        max_osm_string_length = 256 * 4
+        // max_osm_string_length = 256 * 4
+        /// https://github.com/osmcode/pyosmium/issues/185
+        /// we want bigger capacity
+        max_osm_string_length = 256 * 1024 * 4
+        // truncate it??
     };
 
 } // namespace osmium

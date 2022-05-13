@@ -111,6 +111,10 @@ namespace osmium {
             return m_location.lat();
         }
 
+        double alt() const {
+            return m_location.alt();
+        }
+
         /**
          * Get internal x value of the location in this NodeRef.
          */
@@ -123,6 +127,10 @@ namespace osmium {
          */
         constexpr int32_t y() const noexcept {
             return m_location.y();
+        }
+
+        constexpr double z() const noexcept {
+            return m_location.z();
         }
 
         /**

@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
+
 #include <osmium/builder/builder.hpp>
 #include <osmium/builder/osm_object_builder.hpp>
 #include <osmium/io/detail/input_format.hpp>
@@ -296,6 +297,15 @@ namespace osmium {
                         }
                     });
 
+                    if (location.z() == 0.0) {
+                        auto &tags = object.tags();
+                        // https://wiki.openstreetmap.org/wiki/Altitude
+                        const char *ele = tags.get_value_by_key("ele");
+                        if (ele) {
+                            location.set_alt(ele);
+                        }
+                    }
+
                     if (location && object.type() == osmium::item_type::node) {
                         static_cast<osmium::Node&>(object).set_location(location);
                     }
@@ -367,8 +377,9 @@ namespace osmium {
                             m_header.set("generator", value);
                         } else if (!std::strcmp(name, "upload")) {
                             m_header.set("xml_josm_upload", value);
+                        } else {
+                            m_header.set(name, value); // add all headers
                         }
-                        // ignore other attributes
                     });
 
                     if (m_header.get("version").empty()) {

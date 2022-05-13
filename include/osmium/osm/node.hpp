@@ -38,8 +38,11 @@ DEALINGS IN THE SOFTWARE.
 #include <osmium/osm/location.hpp>
 #include <osmium/osm/object.hpp>
 
-namespace osmium {
+#include <tl/optional.hpp>
+// std::optional for c++11
+// you can use std::unique_ptr<T>
 
+namespace osmium {
     namespace builder {
         template <typename TDerived, typename T>
         class OSMObjectBuilder;
@@ -50,7 +53,29 @@ namespace osmium {
         template <typename TDerived, typename T>
         friend class osmium::builder::OSMObjectBuilder;
 
+        struct Cache {
+            tl::optional<double> elevation;
+            tl::optional<RowVectors> key_points;
+        };
+
         osmium::Location m_location;
+        mutable tl::optional<Cache> cache;
+
+        void auto_caching() const {
+            if (cache) {
+                return;
+            }
+            cache = Cache{};
+            for (auto &tag: tags()) {
+                // https://wiki.openstreetmap.org/wiki/Altitude
+                if (!std::strcmp(tag.key(), "ele")) {
+                    // <tag k="ele" v="21.228"/>
+                    double ele = std::atof(tag.value());
+                    cache->elevation = ele;
+                    // m_location.set_alt(ele);
+                }
+            }
+        }
 
         Node() :
             OSMObject(sizeof(Node), osmium::item_type::node) {
@@ -64,7 +89,13 @@ namespace osmium {
             return t == itemtype;
         }
 
+        tl::optional<double> elevation() const {
+            auto_caching();
+            return cache->elevation;
+        }
+
         osmium::Location location() const noexcept {
+            auto_caching();
             return m_location;
         }
 

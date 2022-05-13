@@ -49,22 +49,25 @@ namespace osmium {
 
             double x;
             double y;
+            double z;
 
             /**
              * Default constructor creates invalid coordinates.
              */
             Coordinates() noexcept :
                 x(std::numeric_limits<double>::quiet_NaN()),
-                y(std::numeric_limits<double>::quiet_NaN()) {
+                y(std::numeric_limits<double>::quiet_NaN()),
+                z(0.0) {
             }
 
             /**
              * Create Coordinates from doubles. If any of them is NaN, the
              * coordinates are invalid.
              */
-            explicit Coordinates(double cx, double cy) noexcept :
+            explicit Coordinates(double cx, double cy, double cz = 0.0) noexcept :
                 x(cx),
-                y(cy) {
+                y(cy),
+                z(cz) {
             }
 
             /**
@@ -77,7 +80,8 @@ namespace osmium {
             // cppcheck-suppress noExplicitConstructor
             Coordinates(const osmium::Location& location) : // NOLINT(google-explicit-constructor, hicpp-explicit-conversions)
                 x(location.lon()),
-                y(location.lat()) {
+                y(location.lat()),
+                z(location.alt()) {
             }
 
             /**
@@ -97,11 +101,16 @@ namespace osmium {
              * @param precision Number of digits after the decimal point the
              *        coordinate will be rounded to.
              */
-            void append_to_string(std::string& s, const char infix, int precision) const {
+            void append_to_string(std::string& s, const char infix, int precision, int with_z = -1) const {
                 if (valid()) {
                     osmium::double2string(s, x, precision);
                     s += infix;
                     osmium::double2string(s, y, precision);
+                    // with_z: -1: auto, 0: off, 1: on
+                    if (with_z == 1 || (with_z != 0 && z != 0.0)) {
+                        s += infix;
+                        osmium::double2string(s, z, std::min(3, precision));
+                    }
                 } else {
                     s.append("invalid");
                 }
@@ -119,9 +128,10 @@ namespace osmium {
              * @param precision Number of digits after the decimal point the
              *        coordinate will be rounded to.
              */
-            void append_to_string(std::string& s, const char prefix, const char infix, const char suffix, int precision) const {
+            void append_to_string(std::string& s, const char prefix, const char infix, const char suffix, int precision, int with_z = -1) const {
+                // with_z: -1: auto, 0: off, 1: on
                 s += prefix;
-                append_to_string(s, infix, precision);
+                append_to_string(s, infix, precision, with_z);
                 s += suffix;
             }
 
@@ -142,7 +152,7 @@ namespace osmium {
             }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-equal"
-            return lhs.x == rhs.x && lhs.y == rhs.y;
+            return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == lhs.z;
 #pragma GCC diagnostic pop
         }
 
@@ -152,7 +162,12 @@ namespace osmium {
 
         template <typename TChar, typename TTraits>
         inline std::basic_ostream<TChar, TTraits>& operator<<(std::basic_ostream<TChar, TTraits>& out, const Coordinates& c) {
-            return out << '(' << c.x << ',' << c.y << ')';
+            out << '(' << c.x //
+                << ',' << c.y;
+            if (c.z != 0.0) {
+                out << ',' << c.z;
+            }
+            return out << ')';
         }
 
     } // namespace geom

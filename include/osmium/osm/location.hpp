@@ -65,6 +65,8 @@ namespace osmium {
     namespace detail {
 
         enum {
+            // 360.0 / 2**32 = 8.381903171539307e-08
+            // ~1cm, can't be more accurate for int32_t
             coordinate_precision = 10000000
         };
 
@@ -272,6 +274,7 @@ namespace osmium {
 
         int32_t m_x; // NOLINT(modernize-use-default-member-init)
         int32_t m_y; // NOLINT(modernize-use-default-member-init)
+        double m_z; // NOLINT(modernize-use-default-member-init)
 
         constexpr static double precision() noexcept {
             return static_cast<double>(detail::coordinate_precision);
@@ -300,7 +303,8 @@ namespace osmium {
          */
         explicit constexpr Location() noexcept :
             m_x(undefined_coordinate),
-            m_y(undefined_coordinate) {
+            m_y(undefined_coordinate), 
+            m_z(0.0) {
         }
 
         /**
@@ -308,9 +312,10 @@ namespace osmium {
          * Note that these coordinates are coordinate_precision
          * times larger than the real coordinates.
          */
-        constexpr Location(const int32_t x, const int32_t y) noexcept :
+        constexpr Location(const int32_t x, const int32_t y, const double z = 0.0) noexcept :
             m_x(x),
-            m_y(y) {
+            m_y(y),
+            m_z(z) {
         }
 
         /**
@@ -318,18 +323,20 @@ namespace osmium {
          * Note that these coordinates are coordinate_precision
          * times larger than the real coordinates.
          */
-        constexpr Location(const int64_t x, const int64_t y) noexcept :
+        constexpr Location(const int64_t x, const int64_t y, const double z = 0.0) noexcept :
             m_x(static_cast<int32_t>(x)),
-            m_y(static_cast<int32_t>(y)) {
+            m_y(static_cast<int32_t>(y)),
+            m_z(z) {
         }
 
         /**
          * Create Location with given longitude and latitude in WGS84
          * coordinates.
          */
-        Location(const double lon, const double lat) :
+        Location(const double lon, const double lat, const double z = 0.0) :
             m_x(double_to_fix(lon)),
-            m_y(double_to_fix(lat)) {
+            m_y(double_to_fix(lat)),
+            m_z(z) {
         }
 
         /**
@@ -382,6 +389,10 @@ namespace osmium {
             return m_y;
         }
 
+        constexpr double z() const noexcept {
+            return m_z;
+        }
+
         Location& set_x(const int32_t x) noexcept {
             m_x = x;
             return *this;
@@ -389,6 +400,11 @@ namespace osmium {
 
         Location& set_y(const int32_t y) noexcept {
             m_y = y;
+            return *this;
+        }
+
+        Location& set_z(const double z) noexcept {
+            m_z = z;
             return *this;
         }
 
@@ -430,6 +446,10 @@ namespace osmium {
             return fix_to_double(m_y);
         }
 
+        double alt() const {
+            return m_z;
+        }
+
         Location& set_lon(double lon) noexcept {
             m_x = double_to_fix(lon);
             return *this;
@@ -437,6 +457,11 @@ namespace osmium {
 
         Location& set_lat(double lat) noexcept {
             m_y = double_to_fix(lat);
+            return *this;
+        }
+
+        Location& set_alt(double alt) noexcept {
+            m_z = alt;
             return *this;
         }
 
@@ -457,6 +482,11 @@ namespace osmium {
                 throw invalid_location{std::string{"characters after coordinate: '"} + *data + "'"};
             }
             m_y = value;
+            return *this;
+        }
+
+        Location& set_alt(const char* str) {
+            m_z = std::stod(str);
             return *this;
         }
 
@@ -491,7 +521,7 @@ namespace osmium {
      * Locations are equal if both coordinates are equal.
      */
     inline constexpr bool operator==(const Location& lhs, const Location& rhs) noexcept {
-        return lhs.x() == rhs.x() && lhs.y() == rhs.y();
+        return lhs.x() == rhs.x() && lhs.y() == rhs.y() && lhs.z() == rhs.z();
     }
 
     inline constexpr bool operator!=(const Location& lhs, const Location& rhs) noexcept {
@@ -504,7 +534,8 @@ namespace osmium {
      * undefined the result is undefined.
      */
     inline constexpr bool operator<(const Location& lhs, const Location& rhs) noexcept {
-        return (lhs.x() == rhs.x() && lhs.y() < rhs.y()) || lhs.x() < rhs.x();
+      return std::make_tuple(lhs.x(), lhs.y(), lhs.z()) <
+             std::make_tuple(rhs.x(), rhs.y(), rhs.z());
     }
 
     inline constexpr bool operator>(const Location& lhs, const Location& rhs) noexcept {

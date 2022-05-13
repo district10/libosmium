@@ -57,6 +57,7 @@ DEALINGS IN THE SOFTWARE.
 #include <osmium/osm/way.hpp>
 #include <osmium/thread/pool.hpp>
 #include <osmium/visitor.hpp>
+#include <osmium/util/double.hpp>
 
 #include <iterator>
 #include <memory>
@@ -279,7 +280,18 @@ namespace osmium {
                     }
 
                     if (node.tags().empty()) {
-                        *m_out += "/>\n";
+                        if (node.location().alt() == 0.0) {
+                            *m_out += "/>\n";
+                        } else {
+                            *m_out += ">\n";
+                            write_prefix();
+                            std::string alt;
+                            osmium::double2string(alt, node.location().z(), 3);
+                            *m_out += "<tag k=\"ele\" v=\"";
+                            *m_out += alt;
+                            *m_out += "\">\n";
+                            *m_out += "</node>\n";
+                        }
                         return;
                     }
 
